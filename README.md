@@ -17,7 +17,6 @@ Start demo applications
 
     npm run start
 
-
 ## Repository folder structure
 
 This repository contains many subpackages managed through [Lerna](https://lernajs.io/), and they're

@@ -10,7 +10,7 @@ var CONSTANTS = require('../constants');
  * @param $timeout
  * @constructor
  */
-function WorkflowListController($scope, $stateParams, workflowApiService, $timeout) {
+function WorkflowListController($scope, $stateParams, workflowService, $timeout) {
   var self = this;
   self.workflows = null;
   self.selectedWorkflowId = $stateParams.workflowId;
@@ -18,7 +18,7 @@ function WorkflowListController($scope, $stateParams, workflowApiService, $timeo
 
 
   function refreshWorkflows() {
-    workflowApiService.listWorkflows().then(function(workflows) {
+    workflowService.listWorkflows().then(function(workflows) {
       $timeout(function() {
         _workflows = workflows;
         self.workflows = workflows;
@@ -28,7 +28,7 @@ function WorkflowListController($scope, $stateParams, workflowApiService, $timeo
 
   refreshWorkflows();
 
-  workflowApiService.subscribeToWorkflowCRUDDoneTopics($scope, refreshWorkflows);
+  workflowService.subscribeToWorkflowCRUDDoneTopics($scope, refreshWorkflows);
 
   self.selectWorkflow = function(event, workflow) {
     self.selectedWorkflowId = workflow.id;
