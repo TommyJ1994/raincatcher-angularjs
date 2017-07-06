@@ -5,6 +5,9 @@ var Promise = require('bluebird');
 function WorkflowApiService(config) {
   this.processInstanceRepository = config.workordersRepository;
   this.processRepository = config.workflowsRepository;
+
+  // Holds an wfm.Executor for each ProcessInstance?
+  this.executors = {};
 }
 
 /**
@@ -66,6 +69,7 @@ WorkflowApiService.prototype.updateWorkflow = function(workflowToUpdate) {
  * @returns {Promise}
  */
 WorkflowApiService.prototype.createWorkflow = function(workflowToCreate) {
+  return this.processRepository.create(workflowToCreate);
 };
 
 /**
@@ -77,6 +81,7 @@ WorkflowApiService.prototype.createWorkflow = function(workflowToCreate) {
  * @returns {Promise}
  */
 WorkflowApiService.prototype.removeWorkflow = function(workflowToRemove) {
+  return this.processRepository.delete(workflowToRemove);
 };
 
 /**
@@ -101,11 +106,25 @@ WorkflowApiService.prototype.beginWorkflow = function(workorderId) {
 
 /**
  *
- * Getting a summary of the workorder. This wiil get all of the details related to the workorder, including workflow and result data.
+ * Getting a summary of the workorder. This will get all of the details related to the workorder, including workflow and result data.
  *
  * @param {string} workorderId - The ID of the workorder to get the summary for.
  */
 WorkflowApiService.prototype.workflowSummary = function(workorderId) {
+  var executor = this.executors[workorderId];
+  if (!executor) {
+    return Promise.reject(new Error('Workorder not initiated'));
+  }
+  return this.executorRepository.getSummary().then(function(wfmSummary) {
+    // map wfm summary fields to fields expected by UI
+    return {
+      workorder: wfmSummary.ProcessInstance,
+      workflow: wfmSummary.Process,
+      status: wfmSummary.Process.getAggregateStatus(),
+      nextStepIndex: wfmSummary.ProcessInstance.currentTaskIndex,
+      result: {} // TODO
+    };
+  });
 };
 
 
@@ -116,7 +135,7 @@ WorkflowApiService.prototype.workflowSummary = function(workorderId) {
  * @param {string} workorderId - The ID of the workorder to switch to the previous step for
  */
 WorkflowApiService.prototype.previousStep = function(workorderId) {
-
+  return this.executor.movePrevious();
 };
 
 /**
@@ -154,6 +173,7 @@ WorkflowApiService.prototype.previousStepSubscriber = function(subscriberFunctio
  * @param {string} parameters.stepCode - The ID of the step to save the submission for
  */
 WorkflowApiService.prototype.completeStep = function(parameters) {
+  return this.executors[parameters.workorderId].moveNext(parameters.submission);
 };
 
 angular.module(CONSTANTS.WORKFLOW_DIRECTIVE_MODULE).service(CONSTANTS.WORKFLOW_API_SERVICE, ['WORKFLOW_CONFIG', function(WORKFLOW_CONFIG) {
