@@ -11,6 +11,21 @@ function WorkflowApiService(config) {
 }
 
 /**
+ * Internal function to get the right executor for a given Workorder|Process
+ * @param workorderId Id of the WorkOrder
+ * @returns {Promise}
+ */
+WorkflowApiService.prototype._getExecutorForWorkorder = function(workorderId) {
+  return new Promise(function(resolve, reject) {
+    var executor = this.executors[workorderId];
+    if (!executor) {
+      return reject(new Error('The workorder with id ' + workorderId + " hasn't been started yet"));
+    }
+    return resolve(executor);
+  });
+};
+
+/**
  * Listing All Workflows
  * @returns {Promise}
  */
@@ -111,20 +126,20 @@ WorkflowApiService.prototype.beginWorkflow = function(workorderId) {
  * @param {string} workorderId - The ID of the workorder to get the summary for.
  */
 WorkflowApiService.prototype.workflowSummary = function(workorderId) {
-  var executor = this.executors[workorderId];
-  if (!executor) {
-    return Promise.reject(new Error('Workorder not initiated'));
-  }
-  return this.executorRepository.getSummary().then(function(wfmSummary) {
+  return this._getExecutorForWorkorder(workorderId)
+    .then(function(executor) {
+      return executor.getSummary();
+    })
+    .then(function(wfmSummary) {
     // map wfm summary fields to fields expected by UI
-    return {
-      workorder: wfmSummary.ProcessInstance,
-      workflow: wfmSummary.Process,
-      status: wfmSummary.Process.getAggregateStatus(),
-      nextStepIndex: wfmSummary.ProcessInstance.currentTaskIndex,
-      result: {} // TODO
-    };
-  });
+      return {
+        workorder: wfmSummary.ProcessInstance,
+        workflow: wfmSummary.Process,
+        status: wfmSummary.Process.getAggregateStatus(),
+        nextStepIndex: wfmSummary.ProcessInstance.currentTaskIndex,
+        result: {} // TODO
+      };
+    });
 };
 
 
@@ -135,7 +150,10 @@ WorkflowApiService.prototype.workflowSummary = function(workorderId) {
  * @param {string} workorderId - The ID of the workorder to switch to the previous step for
  */
 WorkflowApiService.prototype.previousStep = function(workorderId) {
-  return this.executor.movePrevious();
+  return this._getExecutorForWorkorder(workorderId)
+    .then(function(executor) {
+      return executor.movePrevious();
+    });
 };
 
 /**
